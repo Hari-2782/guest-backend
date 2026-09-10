@@ -6,7 +6,7 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
-const SALT_ROUNDS = 12;
+const SALT_ROUNDS = 10;
 
 async function main() {
   console.log('🌱 Seeding database...');

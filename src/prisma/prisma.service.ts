@@ -4,6 +4,9 @@ import { PrismaClient } from '@prisma/client';
 /**
  * Single shared Prisma client used across the entire application.
  * Handles connection lifecycle alongside the Nest application lifecycle.
+ *
+ * Connection pool is limited to 5 connections with a 10-second timeout
+ * to prevent Tokio timer panics under CloudLinux thread restrictions.
  */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -12,21 +15,34 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   constructor() {
     super({
       log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+      datasourceUrl: PrismaService.buildDatasourceUrl(),
     });
+  }
+
+  /**
+   * Appends connection_limit and connect_timeout to DATABASE_URL
+   * if they aren't already set, to prevent pool exhaustion panics.
+   */
+  private static buildDatasourceUrl(): string | undefined {
+    const url = process.env.DATABASE_URL;
+    if (!url) return undefined;
+
+    const separator = url.includes('?') ? '&' : '?';
+    const extras: string[] = [];
+
+    if (!url.includes('connection_limit')) extras.push('connection_limit=5');
+    if (!url.includes('connect_timeout')) extras.push('connect_timeout=10');
+    if (!url.includes('pool_timeout')) extras.push('pool_timeout=10');
+
+    return extras.length > 0 ? `${url}${separator}${extras.join('&')}` : url;
   }
 
   async onModuleInit() {
     try {
-      // Connect to local MySQL immediately; 2-second timeout guarantees Hostinger 3s watchdog safety
-      await Promise.race([
-        this.$connect(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Prisma connection timeout after 2000ms')), 2000),
-        ),
-      ]);
+      await this.$connect();
       this.logger.log('Connected to MySQL database via Prisma');
     } catch (error) {
-      this.logger.error('Database connection warning during onModuleInit:', error.message || error);
+      this.logger.error('Database connection failed during onModuleInit:', error.message || error);
     }
   }
 

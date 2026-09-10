@@ -19,7 +19,7 @@ import {
   UserNotFoundException,
 } from '../common/exceptions/domain-exceptions';
 
-const SALT_ROUNDS = 12;
+const SALT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
