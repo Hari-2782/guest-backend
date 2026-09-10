@@ -64,7 +64,7 @@ async function bootstrap() {
   }
 
   const port = configService.get<number>('port', 3000);
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   // eslint-disable-next-line no-console
   console.log(`🏨 Guest House API running on http://localhost:${port}/${apiPrefix}`);
