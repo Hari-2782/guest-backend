@@ -72,7 +72,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = mapped.message;
     } else if (exception instanceof Error) {
       this.logger.error(exception.message, exception.stack);
-      message = isProduction ? message : exception.message;
+      // Temporarily expose real error for DB debugging
+      message = exception.message;
     } else {
       this.logger.error('Unknown exception thrown', JSON.stringify(exception));
     }
