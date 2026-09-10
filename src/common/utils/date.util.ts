@@ -6,7 +6,7 @@
  * client timezone), every date is normalized to a UTC midnight `Date` before
  * being compared, stored, or persisted via Prisma's `@db.Date` columns.
  */
-import { DayOfWeek } from '@prisma/client';
+import { DayOfWeek } from '../enums/day-of-week.enum';
 import { InvalidBookingDatesException } from '../exceptions/domain-exceptions';
 
 /** Maps JS's Date#getUTCDay() (0=Sun..6=Sat) to the DayOfWeek enum (MON..SUN). */

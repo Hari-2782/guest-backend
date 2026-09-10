@@ -7,9 +7,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 // ==========================================
@@ -46,17 +45,6 @@ enum DiscountType {
   FIXED_AMOUNT
 }
 
-// Used by Offer.daysOfWeek to restrict a recurring offer (e.g. every Fri-Sun)
-// to specific weekdays within its overall startDate/endDate window.
-enum DayOfWeek {
-  MON
-  TUE
-  WED
-  THU
-  FRI
-  SAT
-  SUN
-}
 
 // ==========================================
 // USER
@@ -218,7 +206,7 @@ model Offer {
   // offer only discounts bookings whose check-in date falls on one of these
   // weekdays (e.g. [FRI, SAT, SUN] for a recurring weekend offer that keeps
   // applying every week for as long as the overall window runs).
-  daysOfWeek     DayOfWeek[]  @default([])
+  daysOfWeek     String?      @db.VarChar(100)
   minimumNights  Int          @default(1)
   roomTypeId     String?
   roomId         String?

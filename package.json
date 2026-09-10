@@ -18,6 +18,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "prebuild": "npm run prisma:generate",
     "prisma:generate": "prisma generate",
+    "prisma:db:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",

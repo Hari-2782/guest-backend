@@ -92,13 +92,15 @@ export class OffersService {
 
   create(dto: CreateOfferDto): Promise<OfferResponse> {
     this.validateBusinessRules(dto);
+    const { daysOfWeek, ...rest } = dto;
     return this.prisma.offer
       .create({
         // dto.startDate/endDate are validated as ISO date strings (@IsDateString),
         // but Prisma's DateTime column needs a real Date - a bare "YYYY-MM-DD"
         // string sent straight through throws "premature end of input".
         data: {
-          ...dto,
+          ...rest,
+          daysOfWeek: daysOfWeek ? daysOfWeek.join(',') : null,
           startDate: toUtcDateOnly(dto.startDate),
           endDate: toUtcDateOnly(dto.endDate),
         },
@@ -109,10 +111,12 @@ export class OffersService {
   async update(id: string, dto: UpdateOfferDto): Promise<OfferResponse> {
     await this.ensureExists(id);
     this.validateBusinessRules(dto);
+    const { daysOfWeek, ...rest } = dto;
     const offer = await this.prisma.offer.update({
       where: { id },
       data: {
-        ...dto,
+        ...rest,
+        ...(daysOfWeek !== undefined ? { daysOfWeek: daysOfWeek ? daysOfWeek.join(',') : null } : {}),
         ...(dto.startDate ? { startDate: toUtcDateOnly(dto.startDate) } : {}),
         ...(dto.endDate ? { endDate: toUtcDateOnly(dto.endDate) } : {}),
       },
@@ -151,7 +155,13 @@ export class OffersService {
           { OR: [{ roomId }, { roomTypeId }, { AND: [{ roomId: null }, { roomTypeId: null }] }] },
           // Empty daysOfWeek = applies every day (the pre-existing behavior);
           // non-empty = only on the matching weekdays (a recurring offer).
-          { OR: [{ daysOfWeek: { isEmpty: true } }, { daysOfWeek: { has: checkInDayOfWeek } }] },
+          {
+            OR: [
+              { daysOfWeek: null },
+              { daysOfWeek: '' },
+              { daysOfWeek: { contains: checkInDayOfWeek } },
+            ],
+          },
         ],
       },
     });

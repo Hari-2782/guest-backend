@@ -13,7 +13,8 @@ import {
   IsString,
   Min,
 } from 'class-validator';
-import { DayOfWeek, DiscountType } from '@prisma/client';
+import { DiscountType } from '@prisma/client';
+import { DayOfWeek } from '../../common/enums/day-of-week.enum';
 
 export class CreateOfferDto {
   @ApiProperty({ example: 'Early Bird Special' })
