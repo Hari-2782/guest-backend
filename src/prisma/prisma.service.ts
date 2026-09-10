@@ -31,8 +31,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     const extras: string[] = [];
 
     if (!url.includes('connection_limit')) extras.push('connection_limit=5');
-    if (!url.includes('connect_timeout')) extras.push('connect_timeout=10');
-    if (!url.includes('pool_timeout')) extras.push('pool_timeout=10');
 
     return extras.length > 0 ? `${url}${separator}${extras.join('&')}` : url;
   }
