@@ -21,8 +21,27 @@ async function bootstrap() {
   app.use(compression());
   app.use(cookieParser());
 
+  const allowedOrigins = [
+    'https://happyguesthouse.lk',
+    'https://www.happyguesthouse.lk',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    ...(frontendUrl ? frontendUrl.split(',').map((o) => o.trim()) : []),
+  ];
+
   app.enableCors({
-    origin: frontendUrl.split(',').map((origin) => origin.trim()),
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('happyguesthouse.lk') ||
+        origin.endsWith('hostingersite.com')
+      ) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   });
