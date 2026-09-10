@@ -65,4 +65,3 @@ export async function createTestApp(): Promise<{ app: INestApplication; prefix: 
 export async function closeTestApp(app: INestApplication): Promise<void> {
   await app.close();
 }
-

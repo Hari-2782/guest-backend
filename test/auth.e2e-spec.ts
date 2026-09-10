@@ -42,12 +42,7 @@
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
 import { createTestApp, closeTestApp, API_PREFIX } from './helpers/app.helper';
-import {
-  loginAs,
-  bearerHeader,
-  ADMIN_EMAIL,
-  ADMIN_PASSWORD,
-} from './helpers/auth.helper';
+import { loginAs, bearerHeader, ADMIN_EMAIL, ADMIN_PASSWORD } from './helpers/auth.helper';
 
 // ---------------------------------------------------------------------------
 // Unique-per-run email so parallel runs don't collide

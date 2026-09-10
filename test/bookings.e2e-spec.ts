@@ -183,7 +183,7 @@ describe('Bookings lifecycle (e2e)', () => {
   // =========================================================================
 
   describe('GET /bookings/my (customer views own bookings)', () => {
-    it('returns the customer\'s booking list including the one created above', async () => {
+    it("returns the customer's booking list including the one created above", async () => {
       const res = await request(app.getHttpServer())
         .get(`${prefix}/bookings/my`)
         .set(bearerHeader(customerToken))
