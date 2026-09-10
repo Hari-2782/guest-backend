@@ -334,6 +334,10 @@ describe('BookingsService', () => {
       checkOutDate: futureDateStr(5),
       numberOfAdults: 2,
       numberOfChildren: 0,
+      firstName: 'John',
+      lastName: 'Doe',
+      phone: '+94 77 123 4567',
+      address: '123 Beach Road',
     });
 
     beforeEach(() => {
@@ -425,27 +429,29 @@ describe('BookingsService', () => {
     it('should throw RoomNotFoundException when roomId does not exist', async () => {
       prisma._mocks.roomFindUnique.mockResolvedValue(null);
 
-      await expect(service.create(USER_ID, validDto())).rejects.toBeInstanceOf(RoomNotFoundException);
+      await expect(service.create(USER_ID, validDto())).rejects.toBeInstanceOf(
+        RoomNotFoundException,
+      );
     });
 
     it('should throw RoomInactiveException when room.isActive is false', async () => {
       prisma._mocks.roomFindUnique.mockResolvedValue(makeRoom({ isActive: false }));
 
-      await expect(service.create(USER_ID, validDto())).rejects.toBeInstanceOf(RoomInactiveException);
+      await expect(service.create(USER_ID, validDto())).rejects.toBeInstanceOf(
+        RoomInactiveException,
+      );
     });
 
     it('should throw RoomInactiveException when room.status is INACTIVE', async () => {
-      prisma._mocks.roomFindUnique.mockResolvedValue(
-        makeRoom({ status: RoomStatus.INACTIVE }),
-      );
+      prisma._mocks.roomFindUnique.mockResolvedValue(makeRoom({ status: RoomStatus.INACTIVE }));
 
-      await expect(service.create(USER_ID, validDto())).rejects.toBeInstanceOf(RoomInactiveException);
+      await expect(service.create(USER_ID, validDto())).rejects.toBeInstanceOf(
+        RoomInactiveException,
+      );
     });
 
     it('should throw RoomUnderMaintenanceException when room is under maintenance', async () => {
-      prisma._mocks.roomFindUnique.mockResolvedValue(
-        makeRoom({ status: RoomStatus.MAINTENANCE }),
-      );
+      prisma._mocks.roomFindUnique.mockResolvedValue(makeRoom({ status: RoomStatus.MAINTENANCE }));
 
       await expect(service.create(USER_ID, validDto())).rejects.toBeInstanceOf(
         RoomUnderMaintenanceException,
@@ -456,7 +462,9 @@ describe('BookingsService', () => {
       prisma._mocks.roomFindUnique.mockResolvedValue(makeRoom({ maximumGuests: 2 }));
       const dto = { ...validDto(), numberOfAdults: 2, numberOfChildren: 1 }; // 3 > 2
 
-      await expect(service.create(USER_ID, dto)).rejects.toBeInstanceOf(RoomCapacityExceededException);
+      await expect(service.create(USER_ID, dto)).rejects.toBeInstanceOf(
+        RoomCapacityExceededException,
+      );
     });
 
     it('should include the maximum guest number in the capacity error message', async () => {
@@ -483,7 +491,9 @@ describe('BookingsService', () => {
         checkOutDate: futureDateStr(3),
       };
 
-      await expect(service.create(USER_ID, dto)).rejects.toBeInstanceOf(InvalidBookingDatesException);
+      await expect(service.create(USER_ID, dto)).rejects.toBeInstanceOf(
+        InvalidBookingDatesException,
+      );
     });
 
     it('should throw InvalidBookingDatesException when checkOut is before checkIn', async () => {
@@ -493,7 +503,9 @@ describe('BookingsService', () => {
         checkOutDate: futureDateStr(3),
       };
 
-      await expect(service.create(USER_ID, dto)).rejects.toBeInstanceOf(InvalidBookingDatesException);
+      await expect(service.create(USER_ID, dto)).rejects.toBeInstanceOf(
+        InvalidBookingDatesException,
+      );
     });
 
     it('should throw InvalidBookingDatesException when checkIn is in the past', async () => {
@@ -503,7 +515,9 @@ describe('BookingsService', () => {
         checkOutDate: futureDateStr(1),
       };
 
-      await expect(service.create(USER_ID, dto)).rejects.toBeInstanceOf(InvalidBookingDatesException);
+      await expect(service.create(USER_ID, dto)).rejects.toBeInstanceOf(
+        InvalidBookingDatesException,
+      );
     });
 
     it('should accept a booking where checkIn is today (edge case – not in the past)', async () => {
@@ -1039,7 +1053,9 @@ describe('BookingsService', () => {
     });
 
     it('should correctly compute subtotal = pricePerNight × numberOfNights', async () => {
-      prisma._mocks.roomFindUnique.mockResolvedValue(makeRoom({ pricePerNight: new Decimal('100.50') }));
+      prisma._mocks.roomFindUnique.mockResolvedValue(
+        makeRoom({ pricePerNight: new Decimal('100.50') }),
+      );
 
       const threeNightBooking = makeBookingDb({
         pricePerNight: new Decimal('100.50'),
@@ -1054,6 +1070,10 @@ describe('BookingsService', () => {
         checkInDate: futureDateStr(3),
         checkOutDate: futureDateStr(6), // 3 nights
         numberOfAdults: 1,
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '+94 77 123 4567',
+        address: '123 Beach Road',
       };
 
       const result = await service.create(USER_ID, dto);
@@ -1081,6 +1101,10 @@ describe('BookingsService', () => {
         checkInDate: futureDateStr(3),
         checkOutDate: futureDateStr(5),
         numberOfAdults: 2,
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '+94 77 123 4567',
+        address: '123 Beach Road',
       };
 
       const result = await service.create(USER_ID, dto);
@@ -1113,6 +1137,10 @@ describe('BookingsService', () => {
         checkInDate: futureDateStr(3),
         checkOutDate: futureDateStr(5),
         numberOfAdults: 2,
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '+94 77 123 4567',
+        address: '123 Beach Road',
       });
 
       expect(lockOrder).toEqual(['lock', 'overlap-check']);
@@ -1129,6 +1157,10 @@ describe('BookingsService', () => {
           checkInDate: futureDateStr(3),
           checkOutDate: futureDateStr(5),
           numberOfAdults: 2,
+          firstName: 'John',
+          lastName: 'Doe',
+          phone: '+94 77 123 4567',
+          address: '123 Beach Road',
         }),
       ).rejects.toBeInstanceOf(RoomNotAvailableException);
     });

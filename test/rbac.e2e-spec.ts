@@ -73,8 +73,7 @@ describe('RBAC (e2e)', () => {
     });
 
     it('GET /rooms/:id returns 200 for anonymous callers (or 404 for invalid id)', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`${prefix}/rooms/nonexistent-id`);
+      const res = await request(app.getHttpServer()).get(`${prefix}/rooms/nonexistent-id`);
       // 200 if the room exists in seed, 404 if not — both are correct non-401 responses
       expect([200, 404]).toContain(res.status);
     });

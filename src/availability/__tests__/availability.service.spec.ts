@@ -36,7 +36,10 @@ import { Decimal } from '@prisma/client/runtime/library';
 
 import { AvailabilityService } from '../availability.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { InvalidBookingDatesException, RoomNotFoundException } from '../../common/exceptions/domain-exceptions';
+import {
+  InvalidBookingDatesException,
+  RoomNotFoundException,
+} from '../../common/exceptions/domain-exceptions';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -107,10 +110,7 @@ describe('AvailabilityService', () => {
     prisma = makePrismaMock();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AvailabilityService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [AvailabilityService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<AvailabilityService>(AvailabilityService);
@@ -231,9 +231,7 @@ describe('AvailabilityService', () => {
     });
 
     it('should return { available: false } for a room under MAINTENANCE', async () => {
-      prisma._mocks.roomFindUnique.mockResolvedValue(
-        makeRoom({ status: RoomStatus.MAINTENANCE }),
-      );
+      prisma._mocks.roomFindUnique.mockResolvedValue(makeRoom({ status: RoomStatus.MAINTENANCE }));
 
       const result = await service.isRoomAvailableResponse(ROOM_ID, CHECK_IN, CHECK_OUT);
 
@@ -241,9 +239,7 @@ describe('AvailabilityService', () => {
     });
 
     it('should return { available: false } for a room with INACTIVE status', async () => {
-      prisma._mocks.roomFindUnique.mockResolvedValue(
-        makeRoom({ status: RoomStatus.INACTIVE }),
-      );
+      prisma._mocks.roomFindUnique.mockResolvedValue(makeRoom({ status: RoomStatus.INACTIVE }));
 
       const result = await service.isRoomAvailableResponse(ROOM_ID, CHECK_IN, CHECK_OUT);
 
@@ -278,7 +274,12 @@ describe('AvailabilityService', () => {
     it('should return false when no active overlapping bookings exist', async () => {
       prisma._mocks.bookingCount.mockResolvedValue(0);
 
-      const result = await service.hasOverlappingBooking(prisma as never, ROOM_ID, checkIn, checkOut);
+      const result = await service.hasOverlappingBooking(
+        prisma as never,
+        ROOM_ID,
+        checkIn,
+        checkOut,
+      );
 
       expect(result).toBe(false);
     });
@@ -286,7 +287,12 @@ describe('AvailabilityService', () => {
     it('should return true when a PENDING booking overlaps the range', async () => {
       prisma._mocks.bookingCount.mockResolvedValue(1);
 
-      const result = await service.hasOverlappingBooking(prisma as never, ROOM_ID, checkIn, checkOut);
+      const result = await service.hasOverlappingBooking(
+        prisma as never,
+        ROOM_ID,
+        checkIn,
+        checkOut,
+      );
 
       expect(result).toBe(true);
     });
@@ -294,7 +300,12 @@ describe('AvailabilityService', () => {
     it('should return true when an APPROVED booking overlaps the range', async () => {
       prisma._mocks.bookingCount.mockResolvedValue(1);
 
-      const result = await service.hasOverlappingBooking(prisma as never, ROOM_ID, checkIn, checkOut);
+      const result = await service.hasOverlappingBooking(
+        prisma as never,
+        ROOM_ID,
+        checkIn,
+        checkOut,
+      );
 
       expect(result).toBe(true);
     });

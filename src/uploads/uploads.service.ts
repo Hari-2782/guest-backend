@@ -39,9 +39,7 @@ export class UploadsService {
     @Inject(CLOUDINARY) private readonly cloudinary: typeof CloudinaryClient,
     private readonly configService: ConfigService,
   ) {
-    this.useCloudinary = Boolean(
-      this.configService.get<string>('cloudinary.cloudName'),
-    );
+    this.useCloudinary = Boolean(this.configService.get<string>('cloudinary.cloudName'));
 
     // Resolve relative to the project root (one level above /src)
     this.localStorageRoot = path.resolve(process.cwd(), 'secure-uploads');
@@ -150,10 +148,7 @@ export class UploadsService {
   // Local secure storage strategy
   // ---------------------------------------------------------------------------
 
-  private async saveLocally(
-    file: Express.Multer.File,
-    folder: string,
-  ): Promise<UploadedImage> {
+  private async saveLocally(file: Express.Multer.File, folder: string): Promise<UploadedImage> {
     try {
       const ext = this.extensionFromMime(file.mimetype);
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -210,7 +205,10 @@ export class UploadsService {
     // Normalize root for comparison (in case of Windows path separators)
     const normalizedRoot = path.normalize(root);
     const normalizedResolved = path.normalize(resolved);
-    if (!normalizedResolved.startsWith(normalizedRoot + path.sep) && normalizedResolved !== normalizedRoot) {
+    if (
+      !normalizedResolved.startsWith(normalizedRoot + path.sep) &&
+      normalizedResolved !== normalizedRoot
+    ) {
       this.logger.warn(`Path traversal attempt blocked: ${relativePath}`);
       return null;
     }

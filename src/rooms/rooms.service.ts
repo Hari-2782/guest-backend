@@ -109,25 +109,28 @@ export class RoomsService {
 
     const { facilityIds, ...roomData } = dto;
 
-    const room = await this.prisma.$transaction(async (tx) => {
-      if (facilityIds) {
-        await tx.roomFacility.deleteMany({ where: { roomId: id } });
-        if (facilityIds.length) {
-          await tx.roomFacility.createMany({
-            data: facilityIds.map((facilityId) => ({ roomId: id, facilityId })),
-          });
+    const room = await this.prisma.$transaction(
+      async (tx) => {
+        if (facilityIds) {
+          await tx.roomFacility.deleteMany({ where: { roomId: id } });
+          if (facilityIds.length) {
+            await tx.roomFacility.createMany({
+              data: facilityIds.map((facilityId) => ({ roomId: id, facilityId })),
+            });
+          }
         }
-      }
 
-      return tx.room.update({
-        where: { id },
-        data: roomData,
-        include: roomIncludeArgs,
-      });
-    }, {
-      maxWait: 5000,
-      timeout: 15000,
-    });
+        return tx.room.update({
+          where: { id },
+          data: roomData,
+          include: roomIncludeArgs,
+        });
+      },
+      {
+        maxWait: 5000,
+        timeout: 15000,
+      },
+    );
 
     return mapRoomToResponse(room);
   }
@@ -168,7 +171,7 @@ export class RoomsService {
 
   async addImagesByUrl(roomId: string, urls: string[]): Promise<RoomResponse> {
     const room = await this.ensureRoomExists(roomId);
-    
+
     const existingImageCount = await this.prisma.roomImage.count({ where: { roomId } });
     const hasPrimaryAlready = await this.prisma.roomImage.count({
       where: { roomId, isPrimary: true },

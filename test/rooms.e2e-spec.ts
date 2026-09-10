@@ -37,12 +37,7 @@
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
 import { createTestApp, closeTestApp } from './helpers/app.helper';
-import {
-  loginAs,
-  bearerHeader,
-  ADMIN_EMAIL,
-  ADMIN_PASSWORD,
-} from './helpers/auth.helper';
+import { loginAs, bearerHeader, ADMIN_EMAIL, ADMIN_PASSWORD } from './helpers/auth.helper';
 
 describe('Rooms (e2e)', () => {
   let app: INestApplication;

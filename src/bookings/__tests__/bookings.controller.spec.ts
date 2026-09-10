@@ -119,6 +119,10 @@ describe('BookingsController', () => {
       checkOutDate: '2026-09-12',
       numberOfAdults: 2,
       numberOfChildren: 0,
+      firstName: 'John',
+      lastName: 'Doe',
+      phone: '+94 77 123 4567',
+      address: '123 Beach Road',
     };
 
     it('should delegate to bookingsService.create with the authenticated userId', async () => {

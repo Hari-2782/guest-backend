@@ -9,7 +9,6 @@
 import { DayOfWeek } from '@prisma/client';
 import { InvalidBookingDatesException } from '../exceptions/domain-exceptions';
 
-
 /** Maps JS's Date#getUTCDay() (0=Sun..6=Sat) to the DayOfWeek enum (MON..SUN). */
 const JS_DAY_TO_DAY_OF_WEEK: DayOfWeek[] = [
   DayOfWeek.SUN,

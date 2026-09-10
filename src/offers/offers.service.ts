@@ -73,10 +73,14 @@ export class OffersService {
   }
 
   private validateBusinessRules(dto: CreateOfferDto | UpdateOfferDto): void {
-    if (dto.discountType === DiscountType.PERCENTAGE && dto.discountValue !== undefined && dto.discountValue > 100) {
+    if (
+      dto.discountType === DiscountType.PERCENTAGE &&
+      dto.discountValue !== undefined &&
+      dto.discountValue > 100
+    ) {
       throw new BadRequestException('Percentage discount cannot exceed 100');
     }
-    
+
     if (dto.startDate && dto.endDate) {
       const start = new Date(dto.startDate);
       const end = new Date(dto.endDate);

@@ -64,87 +64,92 @@ export class BookingsService {
     const numberOfChildren = dto.numberOfChildren ?? 0;
     const numberOfGuests = numberOfAdults + numberOfChildren;
 
-    const booking = await this.prisma.$transaction(async (tx) => {
-      const room = await tx.room.findUnique({ where: { id: dto.roomId } });
-      if (!room) throw new RoomNotFoundException();
-      if (!room.isActive || room.status === RoomStatus.INACTIVE) throw new RoomInactiveException();
-      if (room.status === RoomStatus.MAINTENANCE) throw new RoomUnderMaintenanceException();
-      if (numberOfGuests > room.maximumGuests) {
-        throw new RoomCapacityExceededException(room.maximumGuests);
-      }
+    const booking = await this.prisma.$transaction(
+      async (tx) => {
+        const room = await tx.room.findUnique({ where: { id: dto.roomId } });
+        if (!room) throw new RoomNotFoundException();
+        if (!room.isActive || room.status === RoomStatus.INACTIVE)
+          throw new RoomInactiveException();
+        if (room.status === RoomStatus.MAINTENANCE) throw new RoomUnderMaintenanceException();
+        if (numberOfGuests > room.maximumGuests) {
+          throw new RoomCapacityExceededException(room.maximumGuests);
+        }
 
-      // Serialize concurrent booking attempts for this exact room.
-      await this.availabilityService.lockRoomForUpdate(tx, room.id);
+        // Serialize concurrent booking attempts for this exact room.
+        await this.availabilityService.lockRoomForUpdate(tx, room.id);
 
-      const hasOverlap = await this.availabilityService.hasOverlappingBooking(
-        tx,
-        room.id,
-        checkInDate,
-        checkOutDate,
-      );
-      if (hasOverlap) throw new RoomNotAvailableException();
-
-      const numberOfNights = calculateNights(checkInDate, checkOutDate);
-      const isAc = dto.isAc ?? true;
-      const pricePerNight = (!isAc && room.pricePerNightNonAc)
-        ? toNumber(room.pricePerNightNonAc)
-        : toNumber(room.pricePerNight);
-      const subtotal = roundCurrency(pricePerNight * numberOfNights);
-
-      const appliedOffer = await this.offersService.findBestApplicableOffer({
-        roomId: room.id,
-        roomTypeId: room.roomTypeId,
-        checkInDate,
-        numberOfNights,
-        subtotal,
-      });
-
-      const discountAmount = appliedOffer?.discountAmount ?? 0;
-      const totalAmount = roundCurrency(subtotal - discountAmount);
-      const bookingNumber = await generateBookingNumber(tx);
-
-      const created = await tx.booking.create({
-        data: {
-          bookingNumber,
-          userId: userId ?? null,
-          roomId: room.id,
-          customerFirstName: dto.firstName,
-          customerLastName: dto.lastName,
-          customerPhone: dto.phone,
-          customerAddress: dto.address,
-          customerEmail: dto.email ?? null,
+        const hasOverlap = await this.availabilityService.hasOverlappingBooking(
+          tx,
+          room.id,
           checkInDate,
           checkOutDate,
-          numberOfGuests,
-          numberOfAdults,
-          numberOfChildren,
+        );
+        if (hasOverlap) throw new RoomNotAvailableException();
+
+        const numberOfNights = calculateNights(checkInDate, checkOutDate);
+        const isAc = dto.isAc ?? true;
+        const pricePerNight =
+          !isAc && room.pricePerNightNonAc
+            ? toNumber(room.pricePerNightNonAc)
+            : toNumber(room.pricePerNight);
+        const subtotal = roundCurrency(pricePerNight * numberOfNights);
+
+        const appliedOffer = await this.offersService.findBestApplicableOffer({
+          roomId: room.id,
+          roomTypeId: room.roomTypeId,
+          checkInDate,
           numberOfNights,
-          pricePerNight,
-          isAc,
           subtotal,
-          discountAmount,
-          totalAmount,
-          offerId: appliedOffer?.offerId,
-          status: BookingStatus.PENDING,
-          customerNote: dto.customerNote,
-        },
-        include: bookingIncludeArgs,
-      });
+        });
 
-      await tx.bookingStatusHistory.create({
-        data: {
-          bookingId: created.id,
-          status: BookingStatus.PENDING,
-          changedBy: userId ?? null,
-          note: `Booking request created by customer (${dto.firstName} ${dto.lastName})`,
-        },
-      });
+        const discountAmount = appliedOffer?.discountAmount ?? 0;
+        const totalAmount = roundCurrency(subtotal - discountAmount);
+        const bookingNumber = await generateBookingNumber(tx);
 
-      return created;
-    }, {
-      maxWait: 10000,
-      timeout: 15000,
-    });
+        const created = await tx.booking.create({
+          data: {
+            bookingNumber,
+            userId: userId ?? null,
+            roomId: room.id,
+            customerFirstName: dto.firstName,
+            customerLastName: dto.lastName,
+            customerPhone: dto.phone,
+            customerAddress: dto.address,
+            customerEmail: dto.email ?? null,
+            checkInDate,
+            checkOutDate,
+            numberOfGuests,
+            numberOfAdults,
+            numberOfChildren,
+            numberOfNights,
+            pricePerNight,
+            isAc,
+            subtotal,
+            discountAmount,
+            totalAmount,
+            offerId: appliedOffer?.offerId,
+            status: BookingStatus.PENDING,
+            customerNote: dto.customerNote,
+          },
+          include: bookingIncludeArgs,
+        });
+
+        await tx.bookingStatusHistory.create({
+          data: {
+            bookingId: created.id,
+            status: BookingStatus.PENDING,
+            changedBy: userId ?? null,
+            note: `Booking request created by customer (${dto.firstName} ${dto.lastName})`,
+          },
+        });
+
+        return created;
+      },
+      {
+        maxWait: 10000,
+        timeout: 15000,
+      },
+    );
 
     return mapBookingToResponse(booking);
   }
