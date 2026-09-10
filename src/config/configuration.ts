@@ -23,9 +23,9 @@ export default () => ({
 
   throttle: {
     ttl: parseInt(process.env.THROTTLE_TTL || '60', 10),
-    limit: parseInt(process.env.THROTTLE_LIMIT || '20', 10),
+    limit: parseInt(process.env.THROTTLE_LIMIT || '120', 10),
     authTtl: parseInt(process.env.AUTH_THROTTLE_TTL || '60', 10),
-    authLimit: parseInt(process.env.AUTH_THROTTLE_LIMIT || '5', 10),
+    authLimit: parseInt(process.env.AUTH_THROTTLE_LIMIT || '10', 10),
   },
 
   seed: {

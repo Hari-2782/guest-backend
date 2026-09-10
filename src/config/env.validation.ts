@@ -22,9 +22,9 @@ export const envValidationSchema = Joi.object({
   CLOUDINARY_API_SECRET: Joi.string().allow('').optional(),
 
   THROTTLE_TTL: Joi.number().default(60),
-  THROTTLE_LIMIT: Joi.number().default(20),
+  THROTTLE_LIMIT: Joi.number().default(120),
   AUTH_THROTTLE_TTL: Joi.number().default(60),
-  AUTH_THROTTLE_LIMIT: Joi.number().default(5),
+  AUTH_THROTTLE_LIMIT: Joi.number().default(10),
 
   SEED_ADMIN_EMAIL: Joi.string().email().optional(),
   SEED_ADMIN_PASSWORD: Joi.string().optional(),
