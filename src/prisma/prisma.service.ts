@@ -15,13 +15,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     });
   }
 
-  async onModuleInit() {
-    try {
-      await this.$connect();
-      this.logger.log('Connected to MySQL database via Prisma');
-    } catch (error) {
-      this.logger.error('Failed to connect to database on startup:', error);
-    }
+  onModuleInit() {
+    // Non-blocking connect so app.listen() is reached within 1 second for Hostinger
+    this.$connect()
+      .then(() => {
+        this.logger.log('Connected to MySQL database via Prisma');
+      })
+      .catch((error) => {
+        this.logger.error('Failed to connect to database on startup:', error);
+      });
   }
 
   async onModuleDestroy() {
