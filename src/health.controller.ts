@@ -1,10 +1,12 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { Public } from './common/decorators/public.decorator';
-import { getEntityManagerToken } from '@nestjs/typeorm';
+import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 
 @Controller('health')
 export class HealthController {
+  constructor(@InjectEntityManager() private readonly manager: EntityManager) {}
+
   @Public()
   @Get()
   check() {
@@ -13,14 +15,15 @@ export class HealthController {
 
   @Public()
   @Get('db')
-  async checkDb(@Inject(getEntityManagerToken()) manager: EntityManager) {
+  async checkDb() {
     try {
-      const tables = await manager.query('SHOW TABLES');
+      const tables = await this.manager.query('SHOW TABLES');
+      if (!tables || tables.length === 0) return { result: 'No tables found' };
       const tableKey = Object.keys(tables[0])[0];
       const result: Record<string, string[]> = {};
       for (const tableRow of tables) {
         const tableName = tableRow[tableKey];
-        const columns = await manager.query(`SHOW COLUMNS FROM \`${tableName}\``);
+        const columns = await this.manager.query(`SHOW COLUMNS FROM \`${tableName}\``);
         result[tableName] = columns.map((c: any) => c.Field);
       }
       return result;
