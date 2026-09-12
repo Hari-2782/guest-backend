@@ -32,11 +32,9 @@ export class User {
   @Column({ nullable: false })
   lastName: string;
 
-  @Index({ unique: true })
   @Column({ unique: true, nullable: false })
   email: string;
 
-  @Index({ unique: true })
   @Column({ unique: true, nullable: true })
   phone: string;
 

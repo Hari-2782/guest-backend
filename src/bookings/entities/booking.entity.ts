@@ -25,7 +25,6 @@ export class Booking {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index({ unique: true })
   @Column({ unique: true, nullable: false })
   bookingNumber: string;
 

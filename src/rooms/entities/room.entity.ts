@@ -29,7 +29,6 @@ export class Room {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index({ unique: true })
   @Column({ unique: true, nullable: false })
   roomNumber: string;
 
@@ -89,8 +88,8 @@ export class Room {
   @ManyToMany(() => Facility, { cascade: true })
   @JoinTable({
     name: 'room_facilities',
-    joinColumn: { referencedColumnName: 'id' },
-    inverseJoinColumn: { referencedColumnName: 'id' },
+    joinColumn: { name: 'roomId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'facilityId', referencedColumnName: 'id' },
   })
   facilities: Facility[];
 
