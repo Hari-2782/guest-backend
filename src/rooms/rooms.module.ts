@@ -6,9 +6,10 @@ import { UploadsModule } from '../uploads/uploads.module';
 import { AvailabilityModule } from '../availability/availability.module';
 import { Room } from './entities/room.entity';
 import { RoomImage } from './entities/room-image.entity';
+import { RoomType } from '../room-types/entities/room-type.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Room, RoomImage]), UploadsModule, AvailabilityModule],
+  imports: [TypeOrmModule.forFeature([Room, RoomImage, RoomType]), UploadsModule, AvailabilityModule],
   controllers: [RoomsController],
   providers: [RoomsService],
   exports: [RoomsService],

@@ -30,18 +30,12 @@ async function bootstrap() {
   ];
 
   app.enableCors({
-    origin: (origin, callback) => {
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        origin.endsWith('happyguesthouse.lk') ||
-        origin.endsWith('hostingersite.com')
-      ) {
-        callback(null, true);
-      } else {
-        callback(null, true);
-      }
-    },
+    origin: [
+      'https://happyguesthouse.lk',
+      'https://www.happyguesthouse.lk',
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   });
