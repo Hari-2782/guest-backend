@@ -30,6 +30,7 @@ export function dayOfWeekOf(date: Date): DayOfWeek {
  * a Date object pinned to UTC midnight for that calendar day.
  */
 export function toUtcDateOnly(input: string | Date): Date {
+  // MySQL DATE columns come back as plain strings (e.g. "2026-09-13"), not Date objects
   const source = typeof input === 'string' ? input : input.toISOString();
   const datePart = source.split('T')[0];
   const [year, month, day] = datePart.split('-').map(Number);
@@ -72,8 +73,12 @@ export function dateRangesOverlap(
   );
 }
 
-/** Formats a Date as "YYYY-MM-DD" (UTC), safe for API responses. */
-export function formatDateOnly(date: Date): string {
+/** Formats a Date or date string as "YYYY-MM-DD" (UTC), safe for API responses. */
+export function formatDateOnly(date: Date | string): string {
+  if (typeof date === 'string') {
+    // MySQL DATE columns come back as plain strings — just return the date part
+    return date.split('T')[0];
+  }
   return date.toISOString().split('T')[0];
 }
 
