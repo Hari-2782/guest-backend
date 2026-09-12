@@ -30,7 +30,7 @@ export class Room {
   id: string;
 
   @Index({ unique: true })
-  @Column({ name: 'room_number', unique: true, nullable: false })
+  @Column({ unique: true, nullable: false })
   roomNumber: string;
 
   @Column({ nullable: false })
@@ -40,25 +40,25 @@ export class Room {
   description: string;
 
   @Index()
-  @Column({ name: 'room_type_id', nullable: false })
+  @Column({ nullable: false })
   roomTypeId: string;
 
-  @Column({ name: 'price_per_night', type: 'decimal', precision: 10, scale: 2, nullable: false })
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false })
   pricePerNight: number;
 
-  @Column({ name: 'price_per_night_non_ac', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   pricePerNightNonAc: number;
 
-  @Column({ name: 'maximum_guests', type: 'int', nullable: false })
+  @Column({ type: 'int', nullable: false })
   maximumGuests: number;
 
-  @Column({ name: 'number_of_beds', type: 'int', nullable: false })
+  @Column({ type: 'int', nullable: false })
   numberOfBeds: number;
 
-  @Column({ name: 'number_of_bathrooms', type: 'int', default: 1 })
+  @Column({ type: 'int', default: 1 })
   numberOfBathrooms: number;
 
-  @Column({ name: 'room_size', type: 'float', nullable: true })
+  @Column({ type: 'float', nullable: true })
   roomSize: number;
 
   @Index()
@@ -70,17 +70,17 @@ export class Room {
   status: RoomStatus;
 
   @Index()
-  @Column({ name: 'is_active', default: true })
+  @Column({ default: true })
   isActive: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ })
   updatedAt: Date;
 
   @ManyToOne(() => RoomType, (roomType) => roomType.rooms)
-  @JoinColumn({ name: 'room_type_id' })
+  @JoinColumn({ })
   roomType: RoomType;
 
   @OneToMany(() => RoomImage, (image) => image.room, { cascade: true })
@@ -89,8 +89,8 @@ export class Room {
   @ManyToMany(() => Facility, { cascade: true })
   @JoinTable({
     name: 'room_facilities',
-    joinColumn: { name: 'room_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'facility_id', referencedColumnName: 'id' },
+    joinColumn: { referencedColumnName: 'id' },
+    inverseJoinColumn: { referencedColumnName: 'id' },
   })
   facilities: Facility[];
 

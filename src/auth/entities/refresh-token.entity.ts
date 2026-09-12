@@ -15,22 +15,22 @@ export class RefreshToken {
   id: string;
 
   @Index()
-  @Column({ name: 'user_id' })
+  @Column({ })
   userId: string;
 
-  @Column({ name: 'token_hash' })
+  @Column({ })
   tokenHash: string;
 
-  @Column({ name: 'expires_at', type: 'datetime' })
+  @Column({ type: 'datetime' })
   expiresAt: Date;
 
-  @Column({ name: 'revoked_at', type: 'datetime', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   revokedAt: Date;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ })
   createdAt: Date;
 
   @ManyToOne(() => User, (user) => (user as any).refreshTokens, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ })
   user: User;
 }

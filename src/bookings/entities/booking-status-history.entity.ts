@@ -16,7 +16,7 @@ export class BookingStatusHistory {
   id: string;
 
   @Index()
-  @Column({ name: 'booking_id' })
+  @Column({ })
   bookingId: string;
 
   @Column({
@@ -28,17 +28,17 @@ export class BookingStatusHistory {
   @Column({ type: 'text', nullable: true })
   note: string;
 
-  @Column({ name: 'changed_by', nullable: true })
+  @Column({ nullable: true })
   changedBy: string;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ })
   createdAt: Date;
 
   @ManyToOne(() => Booking, (booking) => (booking as any).statusHistory, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'booking_id' })
+  @JoinColumn({ })
   booking: Booking;
 
   @ManyToOne(() => User, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'changed_by' })
+  @JoinColumn({ })
   changedByUser: User;
 }

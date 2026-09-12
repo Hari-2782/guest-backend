@@ -15,25 +15,25 @@ export class RoomImage {
   id: string;
 
   @Index()
-  @Column({ name: 'room_id' })
+  @Column({ })
   roomId: string;
 
-  @Column({ name: 'image_url', type: 'text' })
+  @Column({ type: 'text' })
   imageUrl: string;
 
-  @Column({ name: 'public_id', nullable: true })
+  @Column({ nullable: true })
   publicId: string;
 
-  @Column({ name: 'is_primary', default: false })
+  @Column({ default: false })
   isPrimary: boolean;
 
-  @Column({ name: 'sort_order', type: 'int', default: 0 })
+  @Column({ type: 'int', default: 0 })
   sortOrder: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ })
   createdAt: Date;
 
   @ManyToOne(() => Room, (room) => (room as any).images, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'room_id' })
+  @JoinColumn({ })
   room: Room;
 }

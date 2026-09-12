@@ -26,10 +26,10 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'first_name', nullable: false })
+  @Column({ nullable: false })
   firstName: string;
 
-  @Column({ name: 'last_name', nullable: false })
+  @Column({ nullable: false })
   lastName: string;
 
   @Index({ unique: true })
@@ -40,7 +40,7 @@ export class User {
   @Column({ unique: true, nullable: true })
   phone: string;
 
-  @Column({ name: 'password_hash', nullable: false })
+  @Column({ nullable: false })
   passwordHash: string;
 
   @Index()
@@ -58,10 +58,10 @@ export class User {
   })
   status: UserStatus;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ })
   updatedAt: Date;
 
   @OneToMany(() => Booking, (booking) => booking.user)
