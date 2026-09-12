@@ -17,14 +17,14 @@ export class HealthController {
     try {
       const tables = await manager.query('SHOW TABLES');
       const tableKey = Object.keys(tables[0])[0];
-      const result = {};
+      const result: Record<string, string[]> = {};
       for (const tableRow of tables) {
         const tableName = tableRow[tableKey];
         const columns = await manager.query(`SHOW COLUMNS FROM \`${tableName}\``);
-        result[tableName] = columns.map(c => c.Field);
+        result[tableName] = columns.map((c: any) => c.Field);
       }
       return result;
-    } catch (e) {
+    } catch (e: any) {
       return { error: e.message };
     }
   }
