@@ -36,7 +36,7 @@ import { HealthController } from './health.controller';
         type: 'mysql',
         url: config.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: true, // Auto-syncs schema since this is requested in plan
+        synchronize: false, // Disabled in production to prevent schema drop errors
       }),
     }),
     ThrottlerModule.forRootAsync({
