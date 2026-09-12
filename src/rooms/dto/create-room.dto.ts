@@ -15,7 +15,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { RoomStatus } from '@prisma/client';
+import { RoomStatus } from '../entities/room.entity';
 
 export class CreateRoomDto {
   @ApiProperty({ example: '101' })

@@ -1,18 +1,5 @@
-import { Prisma } from '@prisma/client';
-import { toNumber } from '../../common/utils/decimal.util';
+import { Booking } from '../entities/booking.entity';
 import { formatDateOnly } from '../../common/utils/date.util';
-
-const bookingWithRelations = Prisma.validator<Prisma.BookingDefaultArgs>()({
-  include: {
-    room: { include: { roomType: true, images: { orderBy: { sortOrder: 'asc' }, take: 1 } } },
-    user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
-    approvedByUser: { select: { id: true, firstName: true, lastName: true } },
-  },
-});
-
-export type BookingWithRelations = Prisma.BookingGetPayload<typeof bookingWithRelations>;
-
-export const bookingIncludeArgs = bookingWithRelations.include;
 
 export interface BookingResponse {
   id: string;
@@ -63,7 +50,7 @@ export interface BookingResponse {
   updatedAt: Date;
 }
 
-export function mapBookingToResponse(booking: BookingWithRelations): BookingResponse {
+export function mapBookingToResponse(booking: Booking): BookingResponse {
   return {
     id: booking.id,
     bookingNumber: booking.bookingNumber,
@@ -97,7 +84,7 @@ export function mapBookingToResponse(booking: BookingWithRelations): BookingResp
           roomNumber: booking.room.roomNumber,
           name: booking.room.name,
           roomType: booking.room.roomType?.name ?? null,
-          primaryImage: booking.room.images[0]?.imageUrl ?? null,
+          primaryImage: (booking.room as any).images?.[0]?.imageUrl ?? null,
         }
       : null,
     checkInDate: formatDateOnly(booking.checkInDate),
@@ -106,12 +93,12 @@ export function mapBookingToResponse(booking: BookingWithRelations): BookingResp
     numberOfAdults: booking.numberOfAdults,
     numberOfChildren: booking.numberOfChildren,
     numberOfNights: booking.numberOfNights,
-    pricePerNight: toNumber(booking.pricePerNight),
+    pricePerNight: Number(booking.pricePerNight),
     isAc: booking.isAc,
-    subtotal: toNumber(booking.subtotal),
-    discountAmount: toNumber(booking.discountAmount),
-    totalAmount: toNumber(booking.totalAmount),
-    status: booking.status,
+    subtotal: Number(booking.subtotal),
+    discountAmount: Number(booking.discountAmount),
+    totalAmount: Number(booking.totalAmount),
+    status: booking.status as string,
     customerNote: booking.customerNote,
     adminNote: booking.adminNote,
     approvedBy: booking.approvedByUser

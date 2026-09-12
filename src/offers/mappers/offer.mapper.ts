@@ -1,6 +1,5 @@
-import { Offer } from '@prisma/client';
+import { Offer } from '../entities/offer.entity';
 import { DayOfWeek } from '../../common/enums/day-of-week.enum';
-import { toNumber } from '../../common/utils/decimal.util';
 
 export interface OfferResponse {
   id: string;
@@ -26,8 +25,8 @@ export function mapOfferToResponse(offer: Offer): OfferResponse {
     id: offer.id,
     title: offer.title,
     description: offer.description,
-    discountType: offer.discountType,
-    discountValue: toNumber(offer.discountValue),
+    discountType: offer.discountType as string,
+    discountValue: Number(offer.discountValue),
     startDate: offer.startDate,
     endDate: offer.endDate,
     daysOfWeek: offer.daysOfWeek ? (offer.daysOfWeek.split(',').filter(Boolean) as DayOfWeek[]) : [],
@@ -36,7 +35,7 @@ export function mapOfferToResponse(offer: Offer): OfferResponse {
     roomId: offer.roomId,
     isActive: offer.isActive,
     bannerImage: offer.bannerImage,
-    iconName: (offer as any).iconName ?? null,
+    iconName: offer.iconName ?? null,
     createdAt: offer.createdAt,
     updatedAt: offer.updatedAt,
   };

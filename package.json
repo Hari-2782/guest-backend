@@ -15,15 +15,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
-    "prebuild": "npm run prisma:generate",
-    "prisma:generate": "prisma generate",
-    "prisma:db:push": "prisma db push",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand"
   },
   "dependencies": {
     "@nestjs/cli": "^10.4.9",
@@ -35,8 +27,7 @@
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/swagger": "^7.4.2",
     "@nestjs/throttler": "^6.2.1",
-    "@prisma/client": "^6.0.0",
-    "prisma": "^6.0.0",
+    "@nestjs/typeorm": "^12.0.1",
     "@types/bcrypt": "^5.0.2",
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.8",
@@ -58,6 +49,7 @@
     "helmet": "^8.0.0",
     "joi": "^17.13.3",
     "multer": "^2.3.0",
+    "mysql2": "^3.24.4",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
@@ -66,6 +58,7 @@
     "streamifier": "^0.1.1",
     "tar": "^7.5.22",
     "ts-loader": "^9.5.1",
+    "typeorm": "^1.1.1",
     "typescript": "^5.7.2",
     "uuid": "^11.0.3"
   },

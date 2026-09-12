@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { Prisma } from '@prisma/client';
+import { QueryFailedError } from 'typeorm';
 import { ErrorCode } from '../enums/error-code.enum';
 import { DomainException } from '../exceptions/domain.exception';
 
@@ -65,8 +65,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
 
       errorCode = this.mapStatusToErrorCode(status, errorCode);
-    } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
-      const mapped = this.mapPrismaError(exception);
+    } else if (exception instanceof QueryFailedError) {
+      const mapped = this.mapQueryError(exception);
       status = mapped.status;
       errorCode = mapped.errorCode;
       message = mapped.message;
@@ -112,38 +112,33 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
   }
 
-  private mapPrismaError(exception: Prisma.PrismaClientKnownRequestError): {
+  private mapQueryError(exception: QueryFailedError): {
     status: number;
     errorCode: string;
     message: string;
   } {
-    switch (exception.code) {
-      case 'P2002': {
-        const target = (exception.meta?.target as string[] | string) || 'field';
-        return {
-          status: HttpStatus.CONFLICT,
-          errorCode: ErrorCode.VALIDATION_ERROR,
-          message: `A record with this ${Array.isArray(target) ? target.join(', ') : target} already exists`,
-        };
-      }
-      case 'P2025':
-        return {
-          status: HttpStatus.NOT_FOUND,
-          errorCode: ErrorCode.NOT_FOUND,
-          message: 'The requested record was not found',
-        };
-      case 'P2003':
-        return {
-          status: HttpStatus.BAD_REQUEST,
-          errorCode: ErrorCode.VALIDATION_ERROR,
-          message: 'This operation violates a related record constraint',
-        };
-      default:
-        return {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          errorCode: ErrorCode.INTERNAL_ERROR,
-          message: 'A database error occurred',
-        };
+    const driverError = (exception as any).driverError;
+    const errno = driverError?.errno;
+    // MySQL duplicate entry
+    if (errno === 1062) {
+      return {
+        status: HttpStatus.CONFLICT,
+        errorCode: ErrorCode.VALIDATION_ERROR,
+        message: 'A record with this value already exists',
+      };
     }
+    // Foreign key constraint
+    if (errno === 1452) {
+      return {
+        status: HttpStatus.BAD_REQUEST,
+        errorCode: ErrorCode.VALIDATION_ERROR,
+        message: 'This operation violates a related record constraint',
+      };
+    }
+    return {
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+      errorCode: ErrorCode.INTERNAL_ERROR,
+      message: 'A database error occurred',
+    };
   }
 }

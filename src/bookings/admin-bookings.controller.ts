@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Role } from '../users/entities/user.entity';
 import { BookingsService } from './bookings.service';
 import { QueryAdminBookingsDto } from './dto/query-admin-bookings.dto';
 import { RejectBookingDto } from './dto/reject-booking.dto';

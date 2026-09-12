@@ -1,41 +1,55 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { RoomType } from './entities/room-type.entity';
 import { CreateRoomTypeDto } from './dto/create-room-type.dto';
 import { UpdateRoomTypeDto } from './dto/update-room-type.dto';
 import {
   RoomTypeInUseException,
   RoomTypeNotFoundException,
 } from '../common/exceptions/domain-exceptions';
+import { Room } from '../rooms/entities/room.entity';
 
 @Injectable()
 export class RoomTypesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(RoomType)
+    private readonly roomTypeRepository: Repository<RoomType>,
+  ) {}
 
   findAll() {
-    return this.prisma.roomType.findMany({ orderBy: { name: 'asc' } });
+    return this.roomTypeRepository.find({ order: { name: 'ASC' } });
   }
 
   async findOne(id: string) {
-    const roomType = await this.prisma.roomType.findUnique({ where: { id } });
+    const roomType = await this.roomTypeRepository.findOne({ where: { id } });
     if (!roomType) throw new RoomTypeNotFoundException();
     return roomType;
   }
 
-  create(dto: CreateRoomTypeDto) {
-    return this.prisma.roomType.create({ data: dto });
+  async create(dto: CreateRoomTypeDto) {
+    const roomType = this.roomTypeRepository.create(dto);
+    return this.roomTypeRepository.save(roomType);
   }
 
   async update(id: string, dto: UpdateRoomTypeDto) {
-    await this.findOne(id);
-    return this.prisma.roomType.update({ where: { id }, data: dto });
+    const roomType = await this.findOne(id);
+    Object.assign(roomType, dto);
+    return this.roomTypeRepository.save(roomType);
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const roomType = await this.roomTypeRepository.findOne({ 
+      where: { id },
+      relations: { rooms: true } 
+    });
+    
+    if (!roomType) throw new RoomTypeNotFoundException();
 
-    const roomCount = await this.prisma.room.count({ where: { roomTypeId: id } });
-    if (roomCount > 0) throw new RoomTypeInUseException();
+    if (roomType.rooms && roomType.rooms.length > 0) {
+      throw new RoomTypeInUseException();
+    }
 
-    await this.prisma.roomType.delete({ where: { id } });
+    await this.roomTypeRepository.delete(id);
   }
 }

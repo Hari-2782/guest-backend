@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsPositive, IsString, Min } from 'class-validator';
-import { RoomStatus } from '@prisma/client';
+import { RoomStatus } from '../entities/room.entity';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 export class QueryRoomsDto extends PaginationQueryDto {

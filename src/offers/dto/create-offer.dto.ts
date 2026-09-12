@@ -13,7 +13,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
-import { DiscountType } from '@prisma/client';
+import { DiscountType } from '../entities/offer.entity';
 import { DayOfWeek } from '../../common/enums/day-of-week.enum';
 
 export class CreateOfferDto {

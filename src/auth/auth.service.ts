@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { Role, User, UserStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { User, Role, UserStatus } from '../users/entities/user.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -26,40 +28,42 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepository: Repository<RefreshToken>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
-    const existingEmail = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const existingEmail = await this.userRepository.findOne({ where: { email: dto.email } });
     if (existingEmail) throw new EmailAlreadyExistsException();
 
     if (dto.phone) {
-      const existingPhone = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+      const existingPhone = await this.userRepository.findOne({ where: { phone: dto.phone } });
       if (existingPhone) throw new PhoneAlreadyExistsException();
     }
 
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
 
-    const user = await this.prisma.user.create({
-      data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        email: dto.email,
-        phone: dto.phone,
-        passwordHash,
-        role: Role.CUSTOMER,
-        status: UserStatus.ACTIVE,
-      },
+    const user = this.userRepository.create({
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      phone: dto.phone,
+      passwordHash,
+      role: Role.CUSTOMER,
+      status: UserStatus.ACTIVE,
     });
 
-    const tokens = await this.issueTokens(user);
-    return { ...tokens, user: this.toProfile(user) };
+    const savedUser = await this.userRepository.save(user);
+    const tokens = await this.issueTokens(savedUser);
+    return { ...tokens, user: this.toProfile(savedUser) };
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.userRepository.findOne({ where: { email: dto.email } });
     if (!user) throw new InvalidCredentialsException();
 
     const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
@@ -82,7 +86,7 @@ export class AuthService {
       throw new InvalidRefreshTokenException();
     }
 
-    const stored = await this.prisma.refreshToken.findUnique({ where: { id: payload.jti } });
+    const stored = await this.refreshTokenRepository.findOne({ where: { id: payload.jti } });
     if (!stored || stored.revokedAt || stored.expiresAt.getTime() < Date.now()) {
       throw new InvalidRefreshTokenException();
     }
@@ -90,14 +94,12 @@ export class AuthService {
     const matches = await bcrypt.compare(rawRefreshToken, stored.tokenHash);
     if (!matches) throw new InvalidRefreshTokenException();
 
-    const user = await this.prisma.user.findUnique({ where: { id: stored.userId } });
+    const user = await this.userRepository.findOne({ where: { id: stored.userId } });
     if (!user || user.status !== UserStatus.ACTIVE) throw new InvalidRefreshTokenException();
 
     // Rotate: revoke the used refresh token, then issue a brand new pair.
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: new Date() },
-    });
+    stored.revokedAt = new Date();
+    await this.refreshTokenRepository.save(stored);
 
     return this.issueTokens(user);
   }
@@ -109,30 +111,31 @@ export class AuthService {
           rawRefreshToken,
           { secret: this.configService.get<string>('jwt.refreshSecret') },
         );
-        await this.prisma.refreshToken.updateMany({
-          where: { id: payload.jti, userId, revokedAt: null },
-          data: { revokedAt: new Date() },
-        });
+        
+        await this.refreshTokenRepository.update(
+          { id: payload.jti, userId, revokedAt: null as any },
+          { revokedAt: new Date() }
+        );
         return;
       } catch {
         // Fall through to revoking all tokens if the provided token is unusable.
       }
     }
 
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    await this.refreshTokenRepository.update(
+      { userId, revokedAt: null as any },
+      { revokedAt: new Date() }
+    );
   }
 
   async me(userId: string): Promise<UserProfileDto> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new UserNotFoundException();
     return this.toProfile(user);
   }
 
   private async issueTokens(user: User): Promise<AuthTokensDto> {
-    const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role };
+    const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role as string as any };
 
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.get<string>('jwt.accessSecret'),
@@ -150,14 +153,15 @@ export class AuthService {
     );
 
     const tokenHash = await bcrypt.hash(refreshToken, SALT_ROUNDS);
-    await this.prisma.refreshToken.create({
-      data: {
-        id: jti,
-        userId: user.id,
-        tokenHash,
-        expiresAt: this.addDuration(new Date(), refreshExpiresIn),
-      },
+    
+    const newToken = this.refreshTokenRepository.create({
+      id: jti,
+      userId: user.id,
+      tokenHash,
+      expiresAt: this.addDuration(new Date(), refreshExpiresIn),
     });
+    
+    await this.refreshTokenRepository.save(newToken);
 
     return { accessToken, refreshToken };
   }
@@ -186,8 +190,8 @@ export class AuthService {
       lastName: user.lastName,
       email: user.email,
       phone: user.phone,
-      role: user.role,
-      status: user.status,
+      role: user.role as string as any,
+      status: user.status as string as any,
       createdAt: user.createdAt,
     };
   }

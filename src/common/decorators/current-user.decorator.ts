@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Role } from '../../users/entities/user.entity';
 
 export interface AuthenticatedUser {
   id: string;

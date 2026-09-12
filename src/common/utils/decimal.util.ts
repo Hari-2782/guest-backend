@@ -1,7 +1,5 @@
-import { Prisma } from '@prisma/client';
-
-/** Converts a Prisma Decimal (or number/string) into a plain JS number for API responses. */
-export function toNumber(value: Prisma.Decimal | number | string | null | undefined): number {
+/** Converts a value (number/string/null) into a plain JS number for API responses. */
+export function toNumber(value: number | string | { toString(): string } | null | undefined): number {
   if (value === null || value === undefined) return 0;
   if (typeof value === 'number') return value;
   return Number(value.toString());

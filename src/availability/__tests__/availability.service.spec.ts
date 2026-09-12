@@ -31,7 +31,8 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { BookingStatus, RoomStatus } from '@prisma/client';
+import { BookingStatus } from '../../bookings/entities/booking.entity';
+import { RoomStatus } from '../../rooms/entities/room.entity';
 import { Decimal } from '@prisma/client/runtime/library';
 
 import { AvailabilityService } from '../availability.service';

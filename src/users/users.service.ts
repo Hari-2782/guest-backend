@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Role, UserStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import { User, Role, UserStatus } from './entities/user.entity';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { UserNotFoundException } from '../common/exceptions/domain-exceptions';
@@ -10,36 +11,42 @@ import { PaginatedResult } from '../common/dto/paginated-result';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
   async findAll(query: QueryUsersDto): Promise<PaginatedResult<UserProfileDto>> {
     const { page, limit, skip, take } = normalizePagination(query.page, query.limit);
 
-    const where: Prisma.UserWhereInput = {
-      ...(query.role ? { role: query.role } : {}),
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.search
-        ? {
-            OR: [
-              { firstName: { contains: query.search } },
-              { lastName: { contains: query.search } },
-              { email: { contains: query.search } },
-              { phone: { contains: query.search } },
-            ],
-          }
-        : {}),
+    let where: FindOptionsWhere<User>[] | FindOptionsWhere<User> = {};
+
+    const baseWhere: FindOptionsWhere<User> = {
+      ...(query.role ? { role: query.role as Role } : {}),
+      ...(query.status ? { status: query.status as UserStatus } : {}),
     };
 
-    const orderBy: Prisma.UserOrderByWithRelationInput = query.sortBy
-      ? { [query.sortBy]: query.sortOrder }
-      : { createdAt: 'desc' };
+    if (query.search) {
+      where = [
+        { ...baseWhere, firstName: Like(`%${query.search}%`) },
+        { ...baseWhere, lastName: Like(`%${query.search}%`) },
+        { ...baseWhere, email: Like(`%${query.search}%`) },
+        { ...baseWhere, phone: Like(`%${query.search}%`) },
+      ];
+    } else {
+      where = baseWhere;
+    }
 
-    // Promise.all, not $transaction: independent reads run concurrently over
-    // the pool instead of serialized in one DB transaction/connection.
-    const [users, total] = await Promise.all([
-      this.prisma.user.findMany({ where, orderBy, skip, take }),
-      this.prisma.user.count({ where }),
-    ]);
+    const order = query.sortBy
+      ? { [query.sortBy]: query.sortOrder === 'asc' ? 'ASC' : 'DESC' }
+      : { createdAt: 'DESC' };
+
+    const [users, total] = await this.userRepository.findAndCount({
+      where,
+      order: order as any,
+      skip,
+      take,
+    });
 
     return buildPaginatedResult(
       users.map((u) => this.toProfile(u)),
@@ -50,41 +57,30 @@ export class UsersService {
   }
 
   async findOne(id: string): Promise<UserProfileDto> {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new UserNotFoundException();
     return this.toProfile(user);
   }
 
   async updateStatus(id: string, dto: UpdateUserStatusDto): Promise<UserProfileDto> {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new UserNotFoundException();
 
-    const updated = await this.prisma.user.update({
-      where: { id },
-      data: { status: dto.status },
-    });
+    user.status = dto.status as UserStatus;
+    const updated = await this.userRepository.save(user);
 
     return this.toProfile(updated);
   }
 
-  private toProfile(user: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string | null;
-    role: Role;
-    status: UserStatus;
-    createdAt: Date;
-  }): UserProfileDto {
+  private toProfile(user: User): UserProfileDto {
     return {
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       phone: user.phone,
-      role: user.role,
-      status: user.status,
+      role: user.role as string as any,
+      status: user.status as string as any,
       createdAt: user.createdAt,
     };
   }

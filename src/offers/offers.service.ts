@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { DiscountType, Offer, Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, LessThanOrEqual, MoreThanOrEqual, Like } from 'typeorm';
+import { Offer, DiscountType } from './entities/offer.entity';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { UpdateOfferDto } from './dto/update-offer.dto';
 import { QueryOffersDto } from './dto/query-offers.dto';
@@ -18,25 +19,26 @@ export interface AppliedOffer {
 
 @Injectable()
 export class OffersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Offer)
+    private readonly offerRepository: Repository<Offer>,
+  ) {}
 
   /** Public listing: only currently active, currently running offers. */
   async findAllPublic(query: QueryOffersDto): Promise<PaginatedResult<OfferResponse>> {
     const { page, limit, skip, take } = normalizePagination(query.page, query.limit);
     const now = new Date();
 
-    const where: Prisma.OfferWhereInput = {
-      isActive: true,
-      startDate: { lte: now },
-      endDate: { gte: now },
-    };
-
-    // Promise.all, not $transaction: independent reads run concurrently over
-    // the pool instead of serialized in one DB transaction/connection.
-    const [offers, total] = await Promise.all([
-      this.prisma.offer.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
-      this.prisma.offer.count({ where }),
-    ]);
+    const [offers, total] = await this.offerRepository.findAndCount({
+      where: {
+        isActive: true,
+        startDate: LessThanOrEqual(now),
+        endDate: MoreThanOrEqual(now),
+      },
+      order: { createdAt: 'DESC' },
+      skip,
+      take,
+    });
 
     return buildPaginatedResult(offers.map(mapOfferToResponse), page, limit, total);
   }
@@ -45,36 +47,35 @@ export class OffersService {
   async findAllAdmin(query: QueryOffersDto): Promise<PaginatedResult<OfferResponse>> {
     const { page, limit, skip, take } = normalizePagination(query.page, query.limit);
 
-    const where: Prisma.OfferWhereInput = {
-      ...(query.isActive !== undefined ? { isActive: query.isActive } : {}),
-      ...(query.roomTypeId ? { roomTypeId: query.roomTypeId } : {}),
-      ...(query.roomId ? { roomId: query.roomId } : {}),
-      ...(query.search ? { title: { contains: query.search } } : {}),
-    };
+    const where: any = {};
+    if (query.isActive !== undefined) where.isActive = query.isActive;
+    if (query.roomTypeId) where.roomTypeId = query.roomTypeId;
+    if (query.roomId) where.roomId = query.roomId;
+    if (query.search) where.title = Like(`%${query.search}%`);
 
-    const orderBy: Prisma.OfferOrderByWithRelationInput = query.sortBy
-      ? { [query.sortBy]: query.sortOrder }
-      : { createdAt: 'desc' };
+    const order = query.sortBy
+      ? { [query.sortBy]: query.sortOrder === 'asc' ? 'ASC' : 'DESC' }
+      : { createdAt: 'DESC' };
 
-    // Promise.all, not $transaction: independent reads run concurrently over
-    // the pool instead of serialized in one DB transaction/connection.
-    const [offers, total] = await Promise.all([
-      this.prisma.offer.findMany({ where, orderBy, skip, take }),
-      this.prisma.offer.count({ where }),
-    ]);
+    const [offers, total] = await this.offerRepository.findAndCount({
+      where,
+      order: order as any,
+      skip,
+      take,
+    });
 
     return buildPaginatedResult(offers.map(mapOfferToResponse), page, limit, total);
   }
 
   async findOne(id: string): Promise<OfferResponse> {
-    const offer = await this.prisma.offer.findUnique({ where: { id } });
+    const offer = await this.offerRepository.findOne({ where: { id } });
     if (!offer) throw new OfferNotFoundException();
     return mapOfferToResponse(offer);
   }
 
   private validateBusinessRules(dto: CreateOfferDto | UpdateOfferDto): void {
     if (
-      dto.discountType === DiscountType.PERCENTAGE &&
+      dto.discountType === (DiscountType.PERCENTAGE as any) &&
       dto.discountValue !== undefined &&
       dto.discountValue > 100
     ) {
@@ -90,50 +91,44 @@ export class OffersService {
     }
   }
 
-  create(dto: CreateOfferDto): Promise<OfferResponse> {
+  async create(dto: CreateOfferDto): Promise<OfferResponse> {
     this.validateBusinessRules(dto);
     const { daysOfWeek, ...rest } = dto;
-    return this.prisma.offer
-      .create({
-        // dto.startDate/endDate are validated as ISO date strings (@IsDateString),
-        // but Prisma's DateTime column needs a real Date - a bare "YYYY-MM-DD"
-        // string sent straight through throws "premature end of input".
-        data: {
-          ...rest,
-          daysOfWeek: daysOfWeek ? daysOfWeek.join(',') : null,
-          startDate: toUtcDateOnly(dto.startDate),
-          endDate: toUtcDateOnly(dto.endDate),
-        },
-      })
-      .then(mapOfferToResponse);
+    const offer = this.offerRepository.create({
+      ...rest,
+      discountType: dto.discountType as any,
+      daysOfWeek: daysOfWeek ? daysOfWeek.join(',') : null,
+      startDate: toUtcDateOnly(dto.startDate),
+      endDate: toUtcDateOnly(dto.endDate),
+    } as any);
+    const saved = await this.offerRepository.save(offer as any);
+    return mapOfferToResponse(saved as unknown as Offer);
   }
 
   async update(id: string, dto: UpdateOfferDto): Promise<OfferResponse> {
-    await this.ensureExists(id);
+    const offer = await this.ensureExists(id);
     this.validateBusinessRules(dto);
     const { daysOfWeek, ...rest } = dto;
-    const offer = await this.prisma.offer.update({
-      where: { id },
-      data: {
-        ...rest,
-        ...(daysOfWeek !== undefined ? { daysOfWeek: daysOfWeek ? daysOfWeek.join(',') : null } : {}),
-        ...(dto.startDate ? { startDate: toUtcDateOnly(dto.startDate) } : {}),
-        ...(dto.endDate ? { endDate: toUtcDateOnly(dto.endDate) } : {}),
-      },
-    });
-    return mapOfferToResponse(offer);
+    
+    Object.assign(offer, rest);
+    if (dto.discountType) offer.discountType = dto.discountType as any;
+    if (daysOfWeek !== undefined) {
+      offer.daysOfWeek = daysOfWeek ? daysOfWeek.join(',') : null as any;
+    }
+    if (dto.startDate) offer.startDate = toUtcDateOnly(dto.startDate);
+    if (dto.endDate) offer.endDate = toUtcDateOnly(dto.endDate);
+    
+    const updated = await this.offerRepository.save(offer);
+    return mapOfferToResponse(updated);
   }
 
   async remove(id: string): Promise<void> {
     await this.ensureExists(id);
-    await this.prisma.offer.delete({ where: { id } });
+    await this.offerRepository.delete(id);
   }
 
   /**
-   * Determines the best applicable offer for a booking. The frontend never
-   * supplies discount data - it is always computed here from live, trusted
-   * offer records. When multiple offers qualify, the one yielding the
-   * largest discount is applied.
+   * Determines the best applicable offer for a booking.
    */
   async findBestApplicableOffer(params: {
     roomId: string;
@@ -145,26 +140,15 @@ export class OffersService {
     const { roomId, roomTypeId, checkInDate, numberOfNights, subtotal } = params;
     const checkInDayOfWeek = dayOfWeekOf(checkInDate);
 
-    const candidates = await this.prisma.offer.findMany({
-      where: {
-        isActive: true,
-        startDate: { lte: checkInDate },
-        endDate: { gte: checkInDate },
-        minimumNights: { lte: numberOfNights },
-        AND: [
-          { OR: [{ roomId }, { roomTypeId }, { AND: [{ roomId: null }, { roomTypeId: null }] }] },
-          // Empty daysOfWeek = applies every day (the pre-existing behavior);
-          // non-empty = only on the matching weekdays (a recurring offer).
-          {
-            OR: [
-              { daysOfWeek: null },
-              { daysOfWeek: '' },
-              { daysOfWeek: { contains: checkInDayOfWeek } },
-            ],
-          },
-        ],
-      },
-    });
+    // Using query builder for complex AND/OR logic
+    const candidates = await this.offerRepository.createQueryBuilder('offer')
+      .where('offer.isActive = :isActive', { isActive: true })
+      .andWhere('offer.startDate <= :checkInDate', { checkInDate })
+      .andWhere('offer.endDate >= :checkInDate', { checkInDate })
+      .andWhere('offer.minimumNights <= :nights', { nights: numberOfNights })
+      .andWhere('(offer.roomId = :roomId OR offer.roomTypeId = :roomTypeId OR (offer.roomId IS NULL AND offer.roomTypeId IS NULL))', { roomId, roomTypeId })
+      .andWhere('(offer.daysOfWeek IS NULL OR offer.daysOfWeek = "" OR offer.daysOfWeek LIKE :dayOfWeek)', { dayOfWeek: `%${checkInDayOfWeek}%` })
+      .getMany();
 
     if (candidates.length === 0) return null;
 
@@ -180,7 +164,7 @@ export class OffersService {
   }
 
   calculateDiscount(offer: Offer, subtotal: number): number {
-    const value = toNumber(offer.discountValue);
+    const value = Number(offer.discountValue);
     const rawDiscount =
       offer.discountType === DiscountType.PERCENTAGE ? (subtotal * value) / 100 : value;
 
@@ -189,7 +173,7 @@ export class OffersService {
   }
 
   private async ensureExists(id: string) {
-    const offer = await this.prisma.offer.findUnique({ where: { id } });
+    const offer = await this.offerRepository.findOne({ where: { id } });
     if (!offer) throw new OfferNotFoundException();
     return offer;
   }

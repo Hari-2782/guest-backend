@@ -1,19 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { BookingStatus, Prisma, RoomStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, LessThan, MoreThan, In, EntityManager, Not } from 'typeorm';
 import { AvailabilityQueryDto } from './dto/availability-query.dto';
-import { mapRoomToResponse, roomIncludeArgs, RoomResponse } from '../rooms/mappers/room.mapper';
+import { Room, RoomStatus } from '../rooms/entities/room.entity';
+import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
+import { mapRoomToResponse, RoomResponse } from '../rooms/mappers/room.mapper';
 import { assertValidDateRange, toUtcDateOnly } from '../common/utils/date.util';
 import { RoomNotFoundException } from '../common/exceptions/domain-exceptions';
 
 /** Bookings in these statuses hold a claim on the room's calendar. */
 const BLOCKING_STATUSES: BookingStatus[] = [BookingStatus.PENDING, BookingStatus.APPROVED];
 
-type PrismaOrTx = PrismaService | Prisma.TransactionClient;
-
 @Injectable()
 export class AvailabilityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Room)
+    private readonly roomRepository: Repository<Room>,
+    @InjectRepository(Booking)
+    private readonly bookingRepository: Repository<Booking>,
+  ) {}
 
   /**
    * GET /availability - returns active, non-maintenance rooms that satisfy
@@ -25,20 +30,22 @@ export class AvailabilityService {
     const checkOut = toUtcDateOnly(query.checkOut);
     assertValidDateRange(checkIn, checkOut);
 
-    const candidateRooms = await this.prisma.room.findMany({
-      where: {
-        isActive: true,
-        status: RoomStatus.AVAILABLE,
-        ...(query.guests ? { maximumGuests: { gte: query.guests } } : {}),
-        ...(query.roomTypeId ? { roomTypeId: query.roomTypeId } : {}),
-      },
-      include: roomIncludeArgs,
+    const where: any = {
+      isActive: true,
+      status: RoomStatus.AVAILABLE,
+    };
+    if (query.guests) where.maximumGuests = MoreThan(query.guests - 1);
+    if (query.roomTypeId) where.roomTypeId = query.roomTypeId;
+
+    const candidateRooms = await this.roomRepository.find({
+      where,
+      relations: { roomType: true, images: true, facilities: true },
     });
 
     if (candidateRooms.length === 0) return [];
 
     const overlappingRoomIds = await this.findOverlappingRoomIds(
-      this.prisma,
+      this.bookingRepository,
       candidateRooms.map((r) => r.id),
       checkIn,
       checkOut,
@@ -53,7 +60,7 @@ export class AvailabilityService {
     checkInStr: string,
     checkOutStr: string,
   ): Promise<{ available: boolean }> {
-    const room = await this.prisma.room.findUnique({ where: { id: roomId } });
+    const room = await this.roomRepository.findOne({ where: { id: roomId } });
     if (!room) throw new RoomNotFoundException();
 
     const checkIn = toUtcDateOnly(checkInStr);
@@ -64,30 +71,34 @@ export class AvailabilityService {
       return { available: false };
     }
 
-    const hasOverlap = await this.hasOverlappingBooking(this.prisma, roomId, checkIn, checkOut);
+    const hasOverlap = await this.hasOverlappingBooking(this.bookingRepository, roomId, checkIn, checkOut);
     return { available: !hasOverlap };
   }
 
   /**
    * Core overlap check, reused by booking creation and booking approval so
    * the exact same rule governs every path that can claim a room.
-   * Accepts a transaction client so it can run inside the same DB
+   * Accepts an EntityManager or Repository so it can run inside the same DB
    * transaction as the booking write it is guarding.
    */
   async hasOverlappingBooking(
-    client: PrismaOrTx,
+    managerOrRepo: EntityManager | Repository<Booking>,
     roomId: string,
     checkIn: Date,
     checkOut: Date,
     excludeBookingId?: string,
   ): Promise<boolean> {
-    const count = await client.booking.count({
+    const repo = managerOrRepo instanceof EntityManager 
+      ? managerOrRepo.getRepository(Booking) 
+      : managerOrRepo;
+      
+    const count = await repo.count({
       where: {
         roomId,
-        status: { in: BLOCKING_STATUSES },
-        ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
-        checkInDate: { lt: checkOut },
-        checkOutDate: { gt: checkIn },
+        status: In(BLOCKING_STATUSES),
+        ...(excludeBookingId ? { id: Not(excludeBookingId) } : {}),
+        checkInDate: LessThan(checkOut),
+        checkOutDate: MoreThan(checkIn),
       },
     });
     return count > 0;
@@ -99,22 +110,22 @@ export class AvailabilityService {
    * racing past the overlap check together. This is the mechanism that
    * actually prevents double-booking under concurrency.
    */
-  async lockRoomForUpdate(tx: Prisma.TransactionClient, roomId: string): Promise<void> {
-    await tx.$queryRaw`SELECT id FROM rooms WHERE id = ${roomId} FOR UPDATE`;
+  async lockRoomForUpdate(manager: EntityManager, roomId: string): Promise<void> {
+    await manager.query(`SELECT id FROM rooms WHERE id = ? FOR UPDATE`, [roomId]);
   }
 
   private async findOverlappingRoomIds(
-    client: PrismaOrTx,
+    repo: Repository<Booking>,
     roomIds: string[],
     checkIn: Date,
     checkOut: Date,
   ): Promise<Set<string>> {
-    const overlapping = await client.booking.findMany({
+    const overlapping = await repo.find({
       where: {
-        roomId: { in: roomIds },
-        status: { in: BLOCKING_STATUSES },
-        checkInDate: { lt: checkOut },
-        checkOutDate: { gt: checkIn },
+        roomId: In(roomIds),
+        status: In(BLOCKING_STATUSES),
+        checkInDate: LessThan(checkOut),
+        checkOutDate: MoreThan(checkIn),
       },
       select: { roomId: true },
     });

@@ -1,35 +1,41 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Facility } from './entities/facility.entity';
 import { CreateFacilityDto } from './dto/create-facility.dto';
 import { UpdateFacilityDto } from './dto/update-facility.dto';
 import { FacilityNotFoundException } from '../common/exceptions/domain-exceptions';
 
 @Injectable()
 export class FacilitiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(Facility)
+    private readonly facilityRepository: Repository<Facility>,
+  ) {}
 
   findAll() {
-    return this.prisma.facility.findMany({ orderBy: { name: 'asc' } });
+    return this.facilityRepository.find({ order: { name: 'ASC' } });
   }
 
   async findOne(id: string) {
-    const facility = await this.prisma.facility.findUnique({ where: { id } });
+    const facility = await this.facilityRepository.findOne({ where: { id } });
     if (!facility) throw new FacilityNotFoundException();
     return facility;
   }
 
-  create(dto: CreateFacilityDto) {
-    return this.prisma.facility.create({ data: dto });
+  async create(dto: CreateFacilityDto) {
+    const facility = this.facilityRepository.create(dto);
+    return this.facilityRepository.save(facility);
   }
 
   async update(id: string, dto: UpdateFacilityDto) {
-    await this.findOne(id);
-    return this.prisma.facility.update({ where: { id }, data: dto });
+    const facility = await this.findOne(id);
+    Object.assign(facility, dto);
+    return this.facilityRepository.save(facility);
   }
 
   async remove(id: string) {
     await this.findOne(id);
-    // Room-facility links cascade automatically (see schema onDelete: Cascade).
-    await this.prisma.facility.delete({ where: { id } });
+    await this.facilityRepository.delete(id);
   }
 }

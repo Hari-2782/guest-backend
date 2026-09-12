@@ -41,7 +41,8 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { BookingStatus, Role } from '@prisma/client';
+import { BookingStatus } from '../entities/booking.entity';
+import { Role } from '../../users/entities/user.entity';
 
 import { BookingsController } from '../bookings.controller';
 import { AdminBookingsController } from '../admin-bookings.controller';

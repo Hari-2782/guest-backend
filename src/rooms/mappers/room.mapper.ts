@@ -1,15 +1,4 @@
-import { Prisma } from '@prisma/client';
-import { toNumber } from '../../common/utils/decimal.util';
-
-const roomWithRelations = Prisma.validator<Prisma.RoomDefaultArgs>()({
-  include: {
-    roomType: true,
-    images: { orderBy: { sortOrder: 'asc' } },
-    facilities: { include: { facility: true } },
-  },
-});
-
-export type RoomWithRelations = Prisma.RoomGetPayload<typeof roomWithRelations>;
+import { Room } from '../entities/room.entity';
 
 export interface RoomResponse {
   id: string;
@@ -32,9 +21,13 @@ export interface RoomResponse {
   updatedAt: Date;
 }
 
-export const roomIncludeArgs = roomWithRelations.include;
+export const roomIncludeArgs = {
+  roomType: true,
+  images: true, // We will sort them in service or with @OrderBy in entity
+  facilities: true,
+};
 
-export function mapRoomToResponse(room: RoomWithRelations): RoomResponse {
+export function mapRoomToResponse(room: Room): RoomResponse {
   return {
     id: room.id,
     roomNumber: room.roomNumber,
@@ -44,25 +37,29 @@ export function mapRoomToResponse(room: RoomWithRelations): RoomResponse {
     roomType: room.roomType
       ? { id: room.roomType.id, name: room.roomType.name, description: room.roomType.description }
       : null,
-    pricePerNight: toNumber(room.pricePerNight),
-    pricePerNightNonAc: room.pricePerNightNonAc ? toNumber(room.pricePerNightNonAc) : null,
+    pricePerNight: Number(room.pricePerNight),
+    pricePerNightNonAc: room.pricePerNightNonAc ? Number(room.pricePerNightNonAc) : null,
     maximumGuests: room.maximumGuests,
     numberOfBeds: room.numberOfBeds,
     numberOfBathrooms: room.numberOfBathrooms,
     roomSize: room.roomSize,
-    status: room.status,
+    status: room.status as string,
     isActive: room.isActive,
-    images: room.images.map((img) => ({
-      id: img.id,
-      imageUrl: img.imageUrl,
-      isPrimary: img.isPrimary,
-      sortOrder: img.sortOrder,
-    })),
-    facilities: room.facilities.map((rf) => ({
-      id: rf.facility.id,
-      name: rf.facility.name,
-      icon: rf.facility.icon,
-    })),
+    images: (room as any).images
+      ? (room as any).images.map((img: any) => ({
+          id: img.id,
+          imageUrl: img.imageUrl,
+          isPrimary: img.isPrimary,
+          sortOrder: img.sortOrder,
+        }))
+      : [],
+    facilities: (room as any).facilities
+      ? (room as any).facilities.map((f: any) => ({
+          id: f.id,
+          name: f.name,
+          icon: f.icon,
+        }))
+      : [],
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
   };

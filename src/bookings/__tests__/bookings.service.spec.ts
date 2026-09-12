@@ -75,7 +75,9 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { BookingStatus, Role, RoomStatus } from '@prisma/client';
+import { BookingStatus } from '../entities/booking.entity';
+import { Role } from '../../users/entities/user.entity';
+import { RoomStatus } from '../../rooms/entities/room.entity';
 import { Decimal } from '@prisma/client/runtime/library';
 
 import { BookingsService } from '../bookings.service';
