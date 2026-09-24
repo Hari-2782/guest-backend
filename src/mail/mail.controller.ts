@@ -35,11 +35,29 @@ export class MailController {
     const emailSubject = subject || 'Your Bill from Happy Guest House';
     const emailMessage = message || 'Please find attached your bill for your stay at Happy Guest House. Thank you for choosing us!';
 
+    const htmlTemplate = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #1e293b; text-align: center; margin-bottom: 24px;">Happy Guest House</h2>
+        <div style="background-color: #f8fafc; padding: 16px; border-radius: 6px; margin-bottom: 24px;">
+          <p style="color: #334155; line-height: 1.6; font-size: 16px; margin: 0;">
+            Dear Guest,<br><br>
+            ${emailMessage}<br><br>
+            Please find your official invoice attached to this email as a PDF document.
+          </p>
+        </div>
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center; color: #64748b; font-size: 12px;">
+          <p style="margin: 4px 0;"><strong>Happy Guest House</strong></p>
+          <p style="margin: 4px 0;">No. 20 St. Peter's Lane, Hospital Road, Jaffna, Sri Lanka</p>
+          <p style="margin: 4px 0;">📞 021 720 6633 | ✉️ happyguesthouse961@gmail.com</p>
+        </div>
+      </div>
+    `;
+
     await this.mailService.sendMailWithAttachment(
       email,
       emailSubject,
       emailMessage,
-      `<p>${emailMessage}</p>`,
+      htmlTemplate,
       file,
     );
 
