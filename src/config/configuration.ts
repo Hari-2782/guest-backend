@@ -32,4 +32,11 @@ export default () => ({
     adminEmail: process.env.SEED_ADMIN_EMAIL || 'admin@guesthouse.com',
     adminPassword: process.env.SEED_ADMIN_PASSWORD || 'Admin@12345',
   },
+
+  smtp: {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '465', 10),
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
 });

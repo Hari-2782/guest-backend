@@ -5,7 +5,7 @@ import { AvailabilityQueryDto } from './dto/availability-query.dto';
 import { Room, RoomStatus } from '../rooms/entities/room.entity';
 import { Booking, BookingStatus } from '../bookings/entities/booking.entity';
 import { mapRoomToResponse, RoomResponse } from '../rooms/mappers/room.mapper';
-import { assertValidDateRange, toUtcDateOnly } from '../common/utils/date.util';
+import { assertValidDateRange, toUtcDateOnly, formatDateOnly } from '../common/utils/date.util';
 import { RoomNotFoundException } from '../common/exceptions/domain-exceptions';
 
 /** Bookings in these statuses hold a claim on the room's calendar. */
@@ -80,6 +80,11 @@ export class AvailabilityService {
    * the exact same rule governs every path that can claim a room.
    * Accepts an EntityManager or Repository so it can run inside the same DB
    * transaction as the booking write it is guarding.
+   *
+   * NOTE: Uses 'YYYY-MM-DD' strings for comparisons because MySQL returns
+   * DATE columns as plain strings, and passing JS Date objects through
+   * TypeORM's LessThan/MoreThan can cause incorrect datetime comparisons
+   * against DATE-typed columns, producing false positives (409 errors).
    */
   async hasOverlappingBooking(
     managerOrRepo: EntityManager | Repository<Booking>,
@@ -88,17 +93,21 @@ export class AvailabilityService {
     checkOut: Date,
     excludeBookingId?: string,
   ): Promise<boolean> {
-    const repo = managerOrRepo instanceof EntityManager 
-      ? managerOrRepo.getRepository(Booking) 
+    const repo = managerOrRepo instanceof EntityManager
+      ? managerOrRepo.getRepository(Booking)
       : managerOrRepo;
-      
+
+    // Use string dates so MySQL DATE column comparisons work correctly
+    const checkInStr = formatDateOnly(checkIn);
+    const checkOutStr = formatDateOnly(checkOut);
+
     const count = await repo.count({
       where: {
         roomId,
         status: In(BLOCKING_STATUSES),
         ...(excludeBookingId ? { id: Not(excludeBookingId) } : {}),
-        checkInDate: LessThan(checkOut),
-        checkOutDate: MoreThan(checkIn),
+        checkInDate: LessThan(checkOutStr as any),
+        checkOutDate: MoreThan(checkInStr as any),
       },
     });
     return count > 0;
@@ -107,8 +116,7 @@ export class AvailabilityService {
   /**
    * Locks the room row (SELECT ... FOR UPDATE) inside an active transaction
    * so concurrent booking attempts on the *same* room serialize instead of
-   * racing past the overlap check together. This is the mechanism that
-   * actually prevents double-booking under concurrency.
+   * racing past the overlap check together.
    */
   async lockRoomForUpdate(manager: EntityManager, roomId: string): Promise<void> {
     await manager.query(`SELECT id FROM rooms WHERE id = ? FOR UPDATE`, [roomId]);
@@ -120,12 +128,15 @@ export class AvailabilityService {
     checkIn: Date,
     checkOut: Date,
   ): Promise<Set<string>> {
+    const checkInStr = formatDateOnly(checkIn);
+    const checkOutStr = formatDateOnly(checkOut);
+
     const overlapping = await repo.find({
       where: {
         roomId: In(roomIds),
         status: In(BLOCKING_STATUSES),
-        checkInDate: LessThan(checkOut),
-        checkOutDate: MoreThan(checkIn),
+        checkInDate: LessThan(checkOutStr as any),
+        checkOutDate: MoreThan(checkInStr as any),
       },
       select: { roomId: true },
     });

@@ -19,6 +19,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { HealthController } from './health.controller';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   controllers: [HealthController],
@@ -61,6 +62,7 @@ import { HealthController } from './health.controller';
     OffersModule,
     BookingsModule,
     DashboardModule,
+    MailModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
